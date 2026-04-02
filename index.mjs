@@ -6,24 +6,14 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
   const ROUND_TIME = 60;
   const START_HP = 5;
   const WIN_THRESHOLD = 3;
-  const discoverTerm = (termId) => {
-    const all = store.getPosts("discovery");
-    const existing = all.find((d) => d.data.termId === termId);
-    const now = Date.now();
-    if (existing) {
-      store.update(existing.id, { hits: (Number(existing.data.hits) || 0) + 1, lastSeen: now });
-    } else {
-      store.add("discovery", { termId, hits: 1, firstSeen: now, lastSeen: now });
-    }
-  };
-  const unlockNode = (postId) => {
-    const n = store.get(postId);
-    if (n) store.update(postId, { hits: (Number(n.data.hits) || 0) + 1 });
+  const helpers = () => {
+    var _a;
+    return (_a = sdk.shared.getState()) == null ? void 0 : _a.bqHelpers;
   };
   const backToTree = () => {
     var _a;
     const bq = (_a = sdk.shared.getState()) == null ? void 0 : _a.bq;
-    if (bq) sdk.shared.setState({ bq: { ...bq, challenge: false } });
+    if (bq) sdk.shared.setState({ bq: { ...bq, challenge: false, phase: "map" } });
     sdk.useHostStore.setState({ activeId: "plugin-brain-quest" });
   };
   const freshGame = () => ({
@@ -90,54 +80,50 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
   }
   function ChallengeIntro({ node, lexicon }) {
     const title = node ? String(node.data.title) : "???";
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      /* @__PURE__ */ jsxs("div", { style: { textAlign: "center", padding: "32px 0 16px" }, children: [
-        /* @__PURE__ */ jsx(Target, { size: 48 }),
-        /* @__PURE__ */ jsx(ui.Heading, { title })
-      ] }),
-      /* @__PURE__ */ jsx("div", { style: { cursor: "pointer" }, onClick: () => useGame.setState(freshGame()), children: /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs("div", { style: { textAlign: "center", padding: "24px 0" }, children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "24px", fontWeight: 700, color: "#3b82f6", marginBottom: "8px" }, children: "DO BOJU!" }),
-        /* @__PURE__ */ jsxs(ui.Text, { size: "sm", muted: true, children: [
-          "Traf ",
-          WIN_THRESHOLD,
-          "x by odblokować"
+    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsx(ui.Stage, { children: /* @__PURE__ */ jsx(
+      ui.StageLayout,
+      {
+        top: /* @__PURE__ */ jsxs(ui.Stack, { gap: "md", children: [
+          /* @__PURE__ */ jsx(ui.StepHeading, { title, subtitle: `Traf ${WIN_THRESHOLD}x by odblokować` }),
+          /* @__PURE__ */ jsxs(ui.Stats, { children: [
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Terminy", value: lexicon.length }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Życia", value: START_HP }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Czas", value: `${ROUND_TIME}s` })
+          ] })
+        ] }),
+        bottom: /* @__PURE__ */ jsxs(ui.Stack, { children: [
+          /* @__PURE__ */ jsx(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: "DO BOJU!" }),
+          /* @__PURE__ */ jsxs(ui.Button, { size: "lg", outline: true, block: true, onClick: backToTree, children: [
+            /* @__PURE__ */ jsx(ArrowLeft, { size: 14 }),
+            " Wróć"
+          ] })
         ] })
-      ] }) }) }),
-      /* @__PURE__ */ jsx(ui.Row, { justify: "center", children: /* @__PURE__ */ jsxs(ui.Text, { size: "xs", muted: true, children: [
-        lexicon.length,
-        " terminów · ",
-        START_HP,
-        " żyć · ",
-        ROUND_TIME,
-        "s"
-      ] }) }),
-      /* @__PURE__ */ jsx(ui.Row, { justify: "center", children: /* @__PURE__ */ jsxs(ui.Button, { size: "xs", outline: true, onClick: backToTree, children: [
-        /* @__PURE__ */ jsx(ArrowLeft, { size: 14 }),
-        " Wróć"
-      ] }) })
-    ] }) });
+      }
+    ) }) });
   }
   function MenuScreen({ lexicon }) {
     const { mode } = useGame();
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      /* @__PURE__ */ jsxs("div", { style: { textAlign: "center", padding: "24px 0" }, children: [
-        /* @__PURE__ */ jsx(Target, { size: 48 }),
-        /* @__PURE__ */ jsx(ui.Heading, { title: "Whack-a-Term!", subtitle: "Trening wolny" })
-      ] }),
-      /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-        /* @__PURE__ */ jsx(ui.Text, { bold: true, children: "Tryb gry" }),
-        /* @__PURE__ */ jsx(ui.Tabs, { tabs: [
-          { id: "whack-term", label: "Definicja -> Termin" },
-          { id: "whack-def", label: "Termin -> Definicja" }
-        ], active: mode, onChange: (id) => useGame.setState({ mode: id }) })
-      ] }) }),
-      /* @__PURE__ */ jsxs(ui.Stats, { children: [
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Terminy", value: lexicon.length }),
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Czas", value: `${ROUND_TIME}s` }),
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Życia", value: START_HP })
-      ] }),
-      /* @__PURE__ */ jsx(ui.Button, { color: "primary", onClick: () => useGame.setState(freshGame()), children: "Start!" })
-    ] }) });
+    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsx(ui.Stage, { children: /* @__PURE__ */ jsx(
+      ui.StageLayout,
+      {
+        top: /* @__PURE__ */ jsxs(ui.Stack, { gap: "md", children: [
+          /* @__PURE__ */ jsx(ui.StepHeading, { title: "Whack-a-Term!", subtitle: "Trening wolny" }),
+          /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
+            /* @__PURE__ */ jsx(ui.Text, { bold: true, children: "Tryb gry" }),
+            /* @__PURE__ */ jsx(ui.Tabs, { tabs: [
+              { id: "whack-term", label: "Definicja → Termin" },
+              { id: "whack-def", label: "Termin → Definicja" }
+            ], active: mode, onChange: (id) => useGame.setState({ mode: id }) })
+          ] }) }),
+          /* @__PURE__ */ jsxs(ui.Stats, { children: [
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Terminy", value: lexicon.length }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Czas", value: `${ROUND_TIME}s` }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Życia", value: START_HP })
+          ] })
+        ] }),
+        bottom: /* @__PURE__ */ jsx(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: "Start!" })
+      }
+    ) }) });
   }
   function GameScreen({ lexicon }) {
     const { score, hp, combo, timeLeft, mode } = useGame();
@@ -155,11 +141,12 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       return source[Math.floor(Math.random() * source.length)];
     }, [lexicon]);
     const endGame = useCallback((reason) => {
+      var _a;
       gameActive.current = false;
       clearInterval(timerRef.current);
       const state = useGame.getState();
       if (isChallenge && state.correct >= WIN_THRESHOLD && (bq == null ? void 0 : bq.postId)) {
-        unlockNode(bq.postId);
+        (_a = helpers()) == null ? void 0 : _a.unlockNode(bq.postId);
         sdk.log(`Węzeł odblokowany! (${state.correct} trafień)`, "ok");
       }
       useGame.setState({ phase: "summary", ...reason === "time" ? { timeLeft: 0 } : { hp: 0 } });
@@ -196,6 +183,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       });
     }, [lexicon, mode, pickRandom]);
     const whack = useCallback((idx) => {
+      var _a;
       const hole = holes[idx];
       if (!hole || !hole.visible || hole.hit || hole.wrong || !question) return;
       if (hole.termId === question.termId) {
@@ -211,7 +199,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
           maxCombo: Math.max(s.maxCombo, newCombo),
           correct: s.correct + 1
         }));
-        discoverTerm(hole.termId);
+        (_a = helpers()) == null ? void 0 : _a.discover(hole.termId);
         setTimeout(() => {
           if (gameActive.current) nextQuestion();
         }, 600);
@@ -250,8 +238,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     }, []);
     const progress = isChallenge ? Math.min(useGame.getState().correct / WIN_THRESHOLD, 1) : null;
     const holeStyle = (hole, i) => ({
-      width: "140px",
-      height: "100px",
+      aspectRatio: "7/5",
       background: !(hole == null ? void 0 : hole.visible) ? colors.hole : hole.hit ? colors.popCorrect : hole.wrong ? colors.popWrong : colors.pop,
       borderRadius: "16px",
       display: "flex",
@@ -266,35 +253,40 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       textAlign: "center",
       userSelect: "none"
     });
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-        /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", children: [
-          /* @__PURE__ */ jsxs(ui.Badge, { color: "warning", children: [
-            score,
-            " pkt"
+    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsx(ui.Stage, { children: /* @__PURE__ */ jsx(
+      ui.StageLayout,
+      {
+        top: /* @__PURE__ */ jsxs(ui.Stack, { gap: "md", children: [
+          /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
+            /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", children: [
+              /* @__PURE__ */ jsxs(ui.Badge, { color: "warning", children: [
+                score,
+                " pkt"
+              ] }),
+              combo > 1 && /* @__PURE__ */ jsxs(ui.Badge, { color: "accent", children: [
+                "x",
+                combo,
+                "!"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxs(ui.Badge, { color: timeLeft <= 10 ? "error" : "info", children: [
+              timeLeft,
+              "s"
+            ] }),
+            /* @__PURE__ */ jsx(ui.Row, { gap: "sm", children: Array.from({ length: START_HP }, (_, i) => /* @__PURE__ */ jsx("span", { style: { color: i < hp ? colors.hp : colors.muted }, children: /* @__PURE__ */ jsx(Heart, { size: 16 }) }, i)) })
           ] }),
-          combo > 1 && /* @__PURE__ */ jsxs(ui.Badge, { color: "accent", children: [
-            "x",
-            combo,
-            " combo!"
-          ] })
-        ] }),
-        /* @__PURE__ */ jsxs(ui.Badge, { color: timeLeft <= 10 ? "error" : "info", children: [
-          timeLeft,
-          "s"
-        ] }),
-        /* @__PURE__ */ jsx("div", { style: { display: "flex", alignItems: "center" }, children: Array.from({ length: START_HP }, (_, i) => /* @__PURE__ */ jsx("span", { style: { color: i < hp ? colors.hp : colors.muted, margin: "0 1px" }, children: /* @__PURE__ */ jsx(Heart, { size: 18 }) }, i)) })
-      ] }),
-      progress !== null && /* @__PURE__ */ jsx("div", { style: { background: "#1e293b", borderRadius: "8px", height: "8px", overflow: "hidden" }, children: /* @__PURE__ */ jsx("div", { style: { width: `${progress * 100}%`, height: "100%", background: progress >= 1 ? "#22c55e" : "#f59e0b", transition: "width 0.3s ease" } }) }),
-      /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs("div", { style: { textAlign: "center", padding: "8px" }, children: [
-        /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
-        /* @__PURE__ */ jsx(ui.Text, { bold: true, children: (question == null ? void 0 : question.text) || "..." })
-      ] }) }),
-      /* @__PURE__ */ jsx("div", { style: { display: "flex", flexDirection: "column", gap: "16px", alignItems: "center", padding: "16px 0" }, children: [0, 1].map((row) => /* @__PURE__ */ jsx("div", { style: { display: "flex", gap: "16px", justifyContent: "center" }, children: [0, 1, 2].map((col) => {
-        const idx = row * 3 + col, hole = holes[idx];
-        return /* @__PURE__ */ jsx("div", { style: holeStyle(hole, idx), onClick: () => whack(idx), children: (hole == null ? void 0 : hole.visible) ? /* @__PURE__ */ jsx("span", { style: { color: "#fff", fontSize: "13px", fontWeight: 600, lineHeight: 1.2 }, children: hole.term }) : /* @__PURE__ */ jsx("span", { style: { color: colors.muted, fontSize: "24px" }, children: "?" }) }, idx);
-      }) }, row)) })
-    ] }) });
+          progress !== null && /* @__PURE__ */ jsx("div", { style: { background: "#1e293b", borderRadius: "8px", height: "8px", overflow: "hidden" }, children: /* @__PURE__ */ jsx("div", { style: { width: `${progress * 100}%`, height: "100%", background: progress >= 1 ? "#22c55e" : "#f59e0b", transition: "width 0.3s ease" } }) }),
+          /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
+            /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
+            /* @__PURE__ */ jsx(ui.Heading, { title: (question == null ? void 0 : question.text) || "..." })
+          ] }) }),
+          /* @__PURE__ */ jsx("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", width: "100%" }, children: Array.from({ length: HOLE_COUNT }, (_, idx) => {
+            const hole = holes[idx];
+            return /* @__PURE__ */ jsx("div", { style: holeStyle(hole, idx), onClick: () => whack(idx), children: (hole == null ? void 0 : hole.visible) ? /* @__PURE__ */ jsx("span", { style: { color: "#fff", fontSize: "13px", fontWeight: 600, lineHeight: 1.2 }, children: hole.term }) : /* @__PURE__ */ jsx("span", { style: { color: colors.muted, fontSize: "24px" }, children: "?" }) }, idx);
+          }) })
+        ] })
+      }
+    ) }) });
   }
   function SummaryScreen() {
     const { score, correct, wrong, maxCombo, hp } = useGame();
@@ -303,60 +295,62 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     const won = correct >= WIN_THRESHOLD;
     const node = store.usePost((bq == null ? void 0 : bq.postId) || "");
     const nodeTitle = node ? String(node.data.title) : "";
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      /* @__PURE__ */ jsxs("div", { style: { textAlign: "center", padding: "24px 0" }, children: [
-        /* @__PURE__ */ jsx(Award, { size: 48 }),
-        /* @__PURE__ */ jsx(
-          ui.Heading,
-          {
-            title: isChallenge ? won ? "Odblokowano!" : "Spróbuj ponownie" : hp <= 0 ? "Koniec żyć!" : "Czas minął!",
-            subtitle: isChallenge ? won ? `„${nodeTitle}" odblokowany!` : `Potrzeba ${WIN_THRESHOLD} trafień` : "Podsumowanie"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxs(ui.Stats, { children: [
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Wynik", value: score }),
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Trafione", value: correct, color: "success" }),
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Pudła", value: wrong, color: "error" }),
-        /* @__PURE__ */ jsx(ui.Stat, { label: "Max combo", value: maxCombo })
-      ] }),
-      /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-        /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-          /* @__PURE__ */ jsx(ui.Text, { children: "Celność" }),
-          /* @__PURE__ */ jsxs(ui.Text, { bold: true, children: [
-            correct + wrong > 0 ? Math.round(correct / (correct + wrong) * 100) : 0,
-            "%"
+    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsx(ui.Stage, { children: /* @__PURE__ */ jsx(
+      ui.StageLayout,
+      {
+        top: /* @__PURE__ */ jsxs(ui.Stack, { gap: "md", children: [
+          /* @__PURE__ */ jsx(
+            ui.StepHeading,
+            {
+              title: isChallenge ? won ? "Odblokowano!" : "Spróbuj ponownie" : hp <= 0 ? "Koniec żyć!" : "Czas minął!",
+              subtitle: isChallenge ? won ? `„${nodeTitle}" odblokowany!` : `Potrzeba ${WIN_THRESHOLD} trafień` : "Podsumowanie"
+            }
+          ),
+          /* @__PURE__ */ jsxs(ui.Stats, { children: [
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Wynik", value: score }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Trafione", value: correct, color: "success" }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Pudła", value: wrong, color: "error" }),
+            /* @__PURE__ */ jsx(ui.Stat, { label: "Max combo", value: maxCombo })
+          ] }),
+          /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
+            /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
+              /* @__PURE__ */ jsx(ui.Text, { children: "Celność" }),
+              /* @__PURE__ */ jsxs(ui.Text, { bold: true, children: [
+                correct + wrong > 0 ? Math.round(correct / (correct + wrong) * 100) : 0,
+                "%"
+              ] })
+            ] }),
+            isChallenge && /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
+              /* @__PURE__ */ jsx(ui.Text, { children: "Próg" }),
+              /* @__PURE__ */ jsxs(ui.Badge, { color: won ? "success" : "error", children: [
+                correct,
+                "/",
+                WIN_THRESHOLD
+              ] })
+            ] })
+          ] }) })
+        ] }),
+        bottom: /* @__PURE__ */ jsx(ui.Stack, { children: isChallenge ? /* @__PURE__ */ jsxs(Fragment, { children: [
+          !won && /* @__PURE__ */ jsxs(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: [
+            /* @__PURE__ */ jsx(RotateCcw, { size: 16 }),
+            " Ponów"
+          ] }),
+          /* @__PURE__ */ jsxs(ui.Button, { size: "lg", color: won ? "primary" : void 0, outline: !won, block: true, onClick: () => {
+            useGame.setState({ phase: "menu" });
+            backToTree();
+          }, children: [
+            /* @__PURE__ */ jsx(ArrowLeft, { size: 16 }),
+            " Drzewo"
           ] })
-        ] }),
-        isChallenge && /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-          /* @__PURE__ */ jsx(ui.Text, { children: "Próg" }),
-          /* @__PURE__ */ jsxs(ui.Badge, { color: won ? "success" : "error", children: [
-            correct,
-            "/",
-            WIN_THRESHOLD
-          ] })
-        ] })
-      ] }) }),
-      /* @__PURE__ */ jsx(ui.Row, { gap: "sm", children: isChallenge ? /* @__PURE__ */ jsxs(Fragment, { children: [
-        !won && /* @__PURE__ */ jsxs(ui.Button, { color: "primary", onClick: () => useGame.setState(freshGame()), children: [
-          /* @__PURE__ */ jsx(RotateCcw, { size: 16 }),
-          " Ponów"
-        ] }),
-        /* @__PURE__ */ jsxs(ui.Button, { color: won ? "primary" : void 0, outline: !won, onClick: () => {
-          useGame.setState({ phase: "menu" });
-          backToTree();
-        }, children: [
-          /* @__PURE__ */ jsx(ArrowLeft, { size: 16 }),
-          " Drzewo"
-        ] })
-      ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsxs(ui.Button, { color: "primary", onClick: () => useGame.setState(freshGame()), children: [
-          /* @__PURE__ */ jsx(RotateCcw, { size: 16 }),
-          " Jeszcze raz!"
-        ] }),
-        /* @__PURE__ */ jsx(ui.Button, { outline: true, onClick: () => useGame.setState({ phase: "menu" }), children: "Menu" })
-      ] }) })
-    ] }) });
+        ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsxs(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: [
+            /* @__PURE__ */ jsx(RotateCcw, { size: 16 }),
+            " Jeszcze raz!"
+          ] }),
+          /* @__PURE__ */ jsx(ui.Button, { size: "lg", outline: true, block: true, onClick: () => useGame.setState({ phase: "menu" }), children: "Menu" })
+        ] }) })
+      }
+    ) }) });
   }
   function Scoreboard() {
     const { phase, score, combo, correct } = useGame();
