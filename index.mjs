@@ -55,16 +55,25 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     const lexicon = store.useChildren(treeId, "lexicon");
     const node = store.usePost(postId);
     const { phase } = useGame();
+    const nodeContents = store.useChildren(postId, "content");
     const gameLexicon = useMemo(() => {
       if (!isChallenge || !node || lexicon.length < 4) return lexicon;
-      const nodeTitle = String(node.data.title || "").toLowerCase();
-      const nodeBranch = String(node.data.branch || "").toLowerCase();
+      const fullText = nodeContents.filter((c) => String(c.data.contentType) !== "quiz").map((c) => String(c.data.text || "").toLowerCase()).join(" ");
+      if (!fullText) return lexicon;
       const filtered = lexicon.filter((l) => {
-        const cat = String(l.data.category || "").toLowerCase();
-        return cat && (nodeTitle.includes(cat) || nodeBranch.includes(cat) || cat.includes(nodeTitle) || cat.includes(nodeBranch));
+        const term = String(l.data.term || "").toLowerCase();
+        if (fullText.includes(term)) return true;
+        const forms = (() => {
+          try {
+            return JSON.parse(String(l.data.forms || "[]"));
+          } catch {
+            return [];
+          }
+        })();
+        return forms.some((f) => f.length >= 3 && fullText.includes(f.toLowerCase()));
       });
       return filtered.length >= 4 ? filtered : lexicon;
-    }, [lexicon, node, isChallenge]);
+    }, [lexicon, node, isChallenge, nodeContents]);
     if (!treeId) return /* @__PURE__ */ jsx(ui.Placeholder, { text: "Otwórz BrainQuest i wybierz drzewo wiedzy" });
     if (gameLexicon.length < 4) return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
       /* @__PURE__ */ jsx(ui.Placeholder, { text: "Za mało terminów — załaduj drzewo w BrainQuest" }),
@@ -158,10 +167,15 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       if (usedRecently.current.size > Math.floor(lexicon.length * 0.6)) usedRecently.current.clear();
       const distractors = [...lexicon.filter((l) => l.id !== correct.id)].sort(() => Math.random() - 0.5).slice(0, HOLE_COUNT - 1);
       const allTerms = [correct, ...distractors].sort(() => Math.random() - 0.5);
-      setQuestion({
-        termId: correct.id,
-        text: mode === "whack-term" ? String(correct.data.definition) : String(correct.data.term)
-      });
+      const termName = String(correct.data.term);
+      const def = String(correct.data.definition);
+      const matura = String(correct.data.matura || "");
+      const texts = mode === "whack-term" ? [
+        matura || def,
+        def,
+        def.split("—")[0].split("–")[0].split(".")[0].trim()
+      ].filter((v, i, a) => a.indexOf(v) === i) : [termName];
+      setQuestion({ termId: correct.id, texts, level: 0 });
       setHoles(Array(HOLE_COUNT).fill(null));
       const indices = Array.from({ length: HOLE_COUNT }, (_, i) => i).sort(() => Math.random() - 0.5);
       allTerms.forEach((t, i) => {
@@ -277,8 +291,18 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
           ] }),
           progress !== null && /* @__PURE__ */ jsx("div", { style: { background: "#1e293b", borderRadius: "8px", height: "8px", overflow: "hidden" }, children: /* @__PURE__ */ jsx("div", { style: { width: `${progress * 100}%`, height: "100%", background: progress >= 1 ? "#22c55e" : "#f59e0b", transition: "width 0.3s ease" } }) }),
           /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-            /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
-            /* @__PURE__ */ jsx(ui.Heading, { title: (question == null ? void 0 : question.text) || "..." })
+            /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
+              /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
+              question && mode === "whack-term" && question.level < question.texts.length - 1 && /* @__PURE__ */ jsx(
+                "span",
+                {
+                  style: { cursor: "pointer", fontSize: "12px", color: "#94a3b8" },
+                  onClick: () => setQuestion((q) => q ? { ...q, level: q.level + 1 } : q),
+                  children: "💡 Łatwiejsze"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx(ui.Heading, { title: question ? question.texts[question.level] : "..." })
           ] }) }),
           /* @__PURE__ */ jsx("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", width: "100%" }, children: Array.from({ length: HOLE_COUNT }, (_, idx) => {
             const hole = holes[idx];
