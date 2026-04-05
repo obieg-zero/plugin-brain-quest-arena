@@ -394,17 +394,11 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       }
     ) }) });
   }
-  const goToReader = (nodePostId) => {
-    var _a;
-    const bq = (_a = sdk.shared.getState()) == null ? void 0 : _a.bq;
-    if (bq) sdk.shared.setState({ bq: { ...bq, phase: "reader", postId: nodePostId } });
-    sdk.useHostStore.setState({ activeId: "plugin-brain-quest-reader" });
-  };
   function CheatSheet() {
     const { phase, holeTermIds } = useGame();
     const bq = useBq();
     const treeId = (bq == null ? void 0 : bq.treeId) || "";
-    const postId = (bq == null ? void 0 : bq.postId) || "";
+    (bq == null ? void 0 : bq.postId) || "";
     const discoveries = store.usePosts("discovery");
     const lexicon = store.useChildren(treeId, "lexicon");
     const discoveredSet = useMemo(
@@ -420,30 +414,17 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
         discovered: discoveredSet.has(l.id)
       })).sort((a, b) => (a.discovered === b.discovered ? 0 : a.discovered ? -1 : 1) || a.term.localeCompare(b.term, "pl"));
     }, [lexicon, holeTermIds, discoveredSet]);
-    if (phase !== "playing" || holeTerms.length === 0) return null;
-    const discoveredCount = holeTerms.filter((t) => t.discovered).length;
+    const discovered = holeTerms.filter((t) => t.discovered);
+    if (phase !== "playing") return null;
     return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "sm", children: [
       /* @__PURE__ */ jsxs(ui.Text, { size: "xs", muted: true, children: [
-        "Ściągawka (",
-        discoveredCount,
-        "/",
-        holeTerms.length,
-        ")"
+        "Znasz ",
+        discovered.length,
+        " z ",
+        holeTerms.length
       ] }),
-      holeTerms.map((t) => /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", justify: "between", children: [
-        /* @__PURE__ */ jsx(ui.Text, { size: "sm", style: {
-          color: t.discovered ? "#e2e8f0" : "#475569",
-          fontWeight: t.discovered ? 600 : 400
-        }, children: t.discovered ? t.term : "???" }),
-        !t.discovered && postId && /* @__PURE__ */ jsx(
-          "span",
-          {
-            style: { cursor: "pointer", fontSize: "11px", color: "#64748b" },
-            onClick: () => goToReader(postId),
-            children: "czytaj"
-          }
-        )
-      ] }, t.id))
+      discovered.map((t) => /* @__PURE__ */ jsx(ui.Text, { size: "sm", style: { color: "#e2e8f0", fontWeight: 600 }, children: t.term }, t.id)),
+      !discovered.length && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Czytaj więcej, by odblokować podpowiedzi" })
     ] }) });
   }
   function Scoreboard() {
