@@ -6,6 +6,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
   const ROUND_TIME = 60;
   const START_HP = 5;
   const WIN_THRESHOLD = 3;
+  const LEVEL_POINTS = [3, 2, 1];
   const helpers = () => {
     var _a;
     return (_a = sdk.shared.getState()) == null ? void 0 : _a.bqHelpers;
@@ -24,7 +25,10 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     maxCombo: 0,
     timeLeft: ROUND_TIME,
     correct: 0,
-    wrong: 0
+    wrong: 0,
+    questionText: "",
+    questionTermId: "",
+    holeTermIds: []
   });
   const useGame = sdk.create(() => ({
     phase: "menu",
@@ -35,7 +39,10 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     maxCombo: 0,
     timeLeft: ROUND_TIME,
     correct: 0,
-    wrong: 0
+    wrong: 0,
+    questionText: "",
+    questionTermId: "",
+    holeTermIds: []
   }));
   const colors = {
     hole: "#1e293b",
@@ -46,6 +53,13 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     hp: "#ef4444",
     muted: "#64748b"
   };
+  const jparse = (s, fb) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return fb;
+    }
+  };
   const useBq = () => sdk.shared((s) => s == null ? void 0 : s.bq);
   function Arena() {
     const bq = useBq();
@@ -55,25 +69,15 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     const lexicon = store.useChildren(treeId, "lexicon");
     const node = store.usePost(postId);
     const { phase } = useGame();
-    const nodeContents = store.useChildren(postId, "content");
+    const nodeId = (bq == null ? void 0 : bq.nodeId) || "";
     const gameLexicon = useMemo(() => {
-      if (!isChallenge || !node || lexicon.length < 4) return lexicon;
-      const fullText = nodeContents.filter((c) => String(c.data.contentType) !== "quiz").map((c) => String(c.data.text || "").toLowerCase()).join(" ");
-      if (!fullText) return lexicon;
+      if (!isChallenge || !nodeId || lexicon.length < 4) return lexicon;
       const filtered = lexicon.filter((l) => {
-        const term = String(l.data.term || "").toLowerCase();
-        if (fullText.includes(term)) return true;
-        const forms = (() => {
-          try {
-            return JSON.parse(String(l.data.forms || "[]"));
-          } catch {
-            return [];
-          }
-        })();
-        return forms.some((f) => f.length >= 3 && fullText.includes(f.toLowerCase()));
+        const nodes = jparse(String(l.data.nodes || "[]"), []);
+        return nodes.includes(nodeId);
       });
       return filtered.length >= 4 ? filtered : lexicon;
-    }, [lexicon, node, isChallenge, nodeContents]);
+    }, [lexicon, nodeId, isChallenge]);
     if (!treeId) return /* @__PURE__ */ jsx(ui.Placeholder, { text: "Otwórz BrainQuest i wybierz drzewo wiedzy" });
     if (gameLexicon.length < 4) return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
       /* @__PURE__ */ jsx(ui.Placeholder, { text: "Za mało terminów — załaduj drzewo w BrainQuest" }),
@@ -169,13 +173,14 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       const allTerms = [correct, ...distractors].sort(() => Math.random() - 0.5);
       const termName = String(correct.data.term);
       const def = String(correct.data.definition);
-      const matura = String(correct.data.matura || "");
+      const quiz = jparse(String(correct.data.quiz || "{}"), {});
       const texts = mode === "whack-term" ? [
-        matura || def,
-        def,
-        def.split("—")[0].split("–")[0].split(".")[0].trim()
+        quiz.question || def,
+        quiz.hint || def,
+        def
       ].filter((v, i, a) => a.indexOf(v) === i) : [termName];
       setQuestion({ termId: correct.id, texts, level: 0 });
+      useGame.setState({ questionText: texts[0], questionTermId: correct.id, holeTermIds: allTerms.map((t) => t.id) });
       setHoles(Array(HOLE_COUNT).fill(null));
       const indices = Array.from({ length: HOLE_COUNT }, (_, i) => i).sort(() => Math.random() - 0.5);
       allTerms.forEach((t, i) => {
@@ -207,8 +212,9 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
           return n;
         });
         const newCombo = useGame.getState().combo + 1;
+        const levelPts = LEVEL_POINTS[question.level] || 1;
         useGame.setState((s) => ({
-          score: s.score + 10 * (1 + Math.floor(newCombo / 3)),
+          score: s.score + levelPts * (1 + Math.floor(newCombo / 3)),
           combo: newCombo,
           maxCombo: Math.max(s.maxCombo, newCombo),
           correct: s.correct + 1
@@ -292,12 +298,24 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
           progress !== null && /* @__PURE__ */ jsx("div", { style: { background: "#1e293b", borderRadius: "8px", height: "8px", overflow: "hidden" }, children: /* @__PURE__ */ jsx("div", { style: { width: `${progress * 100}%`, height: "100%", background: progress >= 1 ? "#22c55e" : "#f59e0b", transition: "width 0.3s ease" } }) }),
           /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
             /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-              /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
+              /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", children: [
+                /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: mode === "whack-term" ? "Znajdź termin:" : "Znajdź definicję:" }),
+                question && /* @__PURE__ */ jsxs(ui.Badge, { color: question.level === 0 ? "accent" : question.level === 1 ? "warning" : "neutral", children: [
+                  "+",
+                  LEVEL_POINTS[question.level] || 1,
+                  " pkt"
+                ] })
+              ] }),
               question && mode === "whack-term" && question.level < question.texts.length - 1 && /* @__PURE__ */ jsx(
                 "span",
                 {
                   style: { cursor: "pointer", fontSize: "12px", color: "#94a3b8" },
-                  onClick: () => setQuestion((q) => q ? { ...q, level: q.level + 1 } : q),
+                  onClick: () => setQuestion((q) => {
+                    if (!q) return q;
+                    const next = { ...q, level: q.level + 1 };
+                    useGame.setState({ questionText: next.texts[next.level] });
+                    return next;
+                  }),
                   children: "💡 Łatwiejsze"
                 }
               )
@@ -376,6 +394,58 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       }
     ) }) });
   }
+  const goToReader = (nodePostId) => {
+    var _a;
+    const bq = (_a = sdk.shared.getState()) == null ? void 0 : _a.bq;
+    if (bq) sdk.shared.setState({ bq: { ...bq, phase: "reader", postId: nodePostId } });
+    sdk.useHostStore.setState({ activeId: "plugin-brain-quest-reader" });
+  };
+  function CheatSheet() {
+    const { phase, holeTermIds } = useGame();
+    const bq = useBq();
+    const treeId = (bq == null ? void 0 : bq.treeId) || "";
+    const postId = (bq == null ? void 0 : bq.postId) || "";
+    const discoveries = store.usePosts("discovery");
+    const lexicon = store.useChildren(treeId, "lexicon");
+    const discoveredSet = useMemo(
+      () => new Set(discoveries.map((d) => String(d.data.termId))),
+      [discoveries]
+    );
+    const holeTerms = useMemo(() => {
+      if (!holeTermIds || holeTermIds.length === 0) return [];
+      const holeSet = new Set(holeTermIds);
+      return lexicon.filter((l) => holeSet.has(l.id)).map((l) => ({
+        id: l.id,
+        term: String(l.data.term || ""),
+        discovered: discoveredSet.has(l.id)
+      })).sort((a, b) => (a.discovered === b.discovered ? 0 : a.discovered ? -1 : 1) || a.term.localeCompare(b.term, "pl"));
+    }, [lexicon, holeTermIds, discoveredSet]);
+    if (phase !== "playing" || holeTerms.length === 0) return null;
+    const discoveredCount = holeTerms.filter((t) => t.discovered).length;
+    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "sm", children: [
+      /* @__PURE__ */ jsxs(ui.Text, { size: "xs", muted: true, children: [
+        "Ściągawka (",
+        discoveredCount,
+        "/",
+        holeTerms.length,
+        ")"
+      ] }),
+      holeTerms.map((t) => /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", justify: "between", children: [
+        /* @__PURE__ */ jsx(ui.Text, { size: "sm", style: {
+          color: t.discovered ? "#e2e8f0" : "#475569",
+          fontWeight: t.discovered ? 600 : 400
+        }, children: t.discovered ? t.term : "???" }),
+        !t.discovered && postId && /* @__PURE__ */ jsx(
+          "span",
+          {
+            style: { cursor: "pointer", fontSize: "11px", color: "#64748b" },
+            onClick: () => goToReader(postId),
+            children: "czytaj"
+          }
+        )
+      ] }, t.id))
+    ] }) });
+  }
   function Scoreboard() {
     const { phase, score, combo, correct } = useGame();
     const bq = useBq();
@@ -416,6 +486,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       /* @__PURE__ */ jsx(ui.Stats, { children: /* @__PURE__ */ jsx(ui.Stat, { label: "Odkryte terminy", value: `${discoveredCount}/${lexicon.length}` }) })
     ] }) });
   }
+  sdk.registerView("bqa.left", { slot: "left", component: CheatSheet });
   sdk.registerView("bqa.center", { slot: "center", component: Arena });
   sdk.registerView("bqa.right", { slot: "right", component: Scoreboard });
   return { id: "plugin-brain-quest-arena", label: "BQ Arena", icon: Zap, version: "0.4.0" };
