@@ -405,26 +405,22 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       () => new Set(discoveries.map((d) => String(d.data.termId))),
       [discoveries]
     );
-    const holeTerms = useMemo(() => {
+    const discovered = useMemo(() => {
       if (!holeTermIds || holeTermIds.length === 0) return [];
       const holeSet = new Set(holeTermIds);
-      return lexicon.filter((l) => holeSet.has(l.id)).map((l) => ({
+      return lexicon.filter((l) => holeSet.has(l.id) && discoveredSet.has(l.id)).map((l) => ({
         id: l.id,
         term: String(l.data.term || ""),
-        discovered: discoveredSet.has(l.id)
-      })).sort((a, b) => (a.discovered === b.discovered ? 0 : a.discovered ? -1 : 1) || a.term.localeCompare(b.term, "pl"));
+        definition: String(l.data.definition || "")
+      }));
     }, [lexicon, holeTermIds, discoveredSet]);
-    const discovered = holeTerms.filter((t) => t.discovered);
     if (phase !== "playing") return null;
     return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "sm", children: [
-      /* @__PURE__ */ jsxs(ui.Text, { size: "xs", muted: true, children: [
-        "Znasz ",
-        discovered.length,
-        " z ",
-        holeTerms.length
-      ] }),
-      discovered.map((t) => /* @__PURE__ */ jsx(ui.Text, { size: "sm", style: { color: "#e2e8f0", fontWeight: 600 }, children: t.term }, t.id)),
-      !discovered.length && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Czytaj więcej, by odblokować podpowiedzi" })
+      discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "xs", children: [
+        /* @__PURE__ */ jsx(ui.Text, { size: "xs", bold: true, children: t.term }),
+        /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: t.definition })
+      ] }) }, t.id)),
+      !discovered.length && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Im więcej czytasz, tym więcej podpowiedzi dostaniesz" })
     ] }) });
   }
   function Scoreboard() {
