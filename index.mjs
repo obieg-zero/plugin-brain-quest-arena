@@ -306,19 +306,12 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
                   " pkt"
                 ] })
               ] }),
-              question && mode === "whack-term" && question.level < question.texts.length - 1 && /* @__PURE__ */ jsx(
-                "span",
-                {
-                  style: { cursor: "pointer", fontSize: "12px", color: "#94a3b8" },
-                  onClick: () => setQuestion((q) => {
-                    if (!q) return q;
-                    const next = { ...q, level: q.level + 1 };
-                    useGame.setState({ questionText: next.texts[next.level] });
-                    return next;
-                  }),
-                  children: "💡 Łatwiejsze"
-                }
-              )
+              question && mode === "whack-term" && question.level < question.texts.length - 1 && /* @__PURE__ */ jsx(ui.Button, { size: "xs", color: "ghost", onClick: () => setQuestion((q) => {
+                if (!q) return q;
+                const next = { ...q, level: q.level + 1 };
+                useGame.setState({ questionText: next.texts[next.level] });
+                return next;
+              }), children: "💡 Łatwiejsze" })
             ] }),
             /* @__PURE__ */ jsx(ui.Heading, { title: question ? question.texts[question.level] : "..." })
           ] }) }),
@@ -415,10 +408,10 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       }));
     }, [lexicon, holeTermIds, discoveredSet]);
     if (phase !== "playing") return null;
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "sm", children: [
-      discovered.length > 0 && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Podpowiedzi" }),
-      discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsx(ui.Text, { size: "xs", children: t.definition }) }, t.id))
-    ] }) });
+    return /* @__PURE__ */ jsx(ui.Box, { header: /* @__PURE__ */ jsx(ui.Cell, { label: true, children: "Odkryte terminy" }), body: /* @__PURE__ */ jsx(ui.Stack, { gap: "sm", children: discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "xs", children: [
+      /* @__PURE__ */ jsx(ui.Text, { size: "xs", bold: true, children: t.term }),
+      /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: t.definition })
+    ] }) }, t.id)) }), grow: true });
   }
   function Scoreboard() {
     const { phase, score, combo, correct } = useGame();
@@ -432,8 +425,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       const dset = new Set(discoveries.map((d) => String(d.data.termId)));
       return lexicon.filter((l) => dset.has(l.id)).length;
     }, [lexicon, discoveries]);
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      /* @__PURE__ */ jsx(ui.Heading, { title: "Arena" }),
+    return /* @__PURE__ */ jsx(ui.Box, { header: /* @__PURE__ */ jsx(ui.Cell, { label: true, children: "Arena" }), body: /* @__PURE__ */ jsxs(ui.Stack, { children: [
       isChallenge && node && /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
         /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Cel" }),
         /* @__PURE__ */ jsx(ui.Text, { bold: true, children: String(node.data.title) }),
@@ -458,7 +450,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       ] }) }),
       /* @__PURE__ */ jsx(ui.Divider, {}),
       /* @__PURE__ */ jsx(ui.Stats, { children: /* @__PURE__ */ jsx(ui.Stat, { label: "Odkryte terminy", value: `${discoveredCount}/${lexicon.length}` }) })
-    ] }) });
+    ] }), grow: true });
   }
   sdk.registerView("bqa.left", { slot: "left", component: CheatSheet });
   sdk.registerView("bqa.center", { slot: "center", component: Arena });
