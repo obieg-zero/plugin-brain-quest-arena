@@ -416,11 +416,8 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     }, [lexicon, holeTermIds, discoveredSet]);
     if (phase !== "playing") return null;
     return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "sm", children: [
-      discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "xs", children: [
-        /* @__PURE__ */ jsx(ui.Text, { size: "xs", bold: true, children: t.term }),
-        /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: t.definition })
-      ] }) }, t.id)),
-      !discovered.length && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Im więcej czytasz, tym więcej podpowiedzi dostaniesz" })
+      discovered.length > 0 && /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Podpowiedzi" }),
+      discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsx(ui.Text, { size: "xs", children: t.definition }) }, t.id))
     ] }) });
   }
   function Scoreboard() {
