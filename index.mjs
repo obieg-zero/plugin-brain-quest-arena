@@ -1,21 +1,19 @@
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 const plugin = ({ React, ui, store, sdk, icons }) => {
   const { useState, useEffect, useMemo, useCallback, useRef } = React;
-  const { Zap, Heart, Target, Award, RotateCcw, ArrowLeft } = icons;
+  const { Zap, Heart, RotateCcw, ArrowLeft } = icons;
   const HOLE_COUNT = 6;
   const ROUND_TIME = 60;
   const START_HP = 5;
   const WIN_THRESHOLD = 3;
   const LEVEL_POINTS = [3, 2, 1];
-  const helpers = () => {
+  const H = () => {
     var _a;
     return (_a = sdk.shared.getState()) == null ? void 0 : _a.bqHelpers;
   };
   const backToTree = () => {
-    var _a;
-    const bq = (_a = sdk.shared.getState()) == null ? void 0 : _a.bq;
-    if (bq) sdk.shared.setState({ bq: { ...bq, challenge: false, phase: "map" } });
-    sdk.useHostStore.setState({ activeId: "plugin-brain-quest" });
+    var _a, _b;
+    return (_b = (_a = H()) == null ? void 0 : _a.nav) == null ? void 0 : _b.toMap();
   };
   const freshGame = () => ({
     phase: "playing",
@@ -45,13 +43,11 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     holeTermIds: []
   }));
   const colors = {
-    hole: "#1e293b",
-    holeRim: "#334155",
-    pop: "#3b82f6",
-    popCorrect: "#22c55e",
-    popWrong: "#ef4444",
-    hp: "#ef4444",
-    muted: "#64748b"
+    hole: "var(--color-base-200)",
+    holeRim: "var(--color-base-300)",
+    pop: "var(--color-primary)",
+    popCorrect: "var(--color-success)",
+    popWrong: "var(--color-error)"
   };
   const jparse = (s, fb) => {
     try {
@@ -67,7 +63,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     const postId = (bq == null ? void 0 : bq.postId) || "";
     const isChallenge = !!(bq == null ? void 0 : bq.challenge);
     const lexicon = store.useChildren(treeId, "lexicon");
-    const node = store.usePost(postId);
+    store.usePost(postId);
     const { phase } = useGame();
     const nodeId = (bq == null ? void 0 : bq.nodeId) || "";
     const gameLexicon = useMemo(() => {
@@ -86,33 +82,12 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
         " Wróć do drzewa"
       ] })
     ] }) });
-    if (isChallenge && phase === "menu") return /* @__PURE__ */ jsx(ChallengeIntro, { node, lexicon: gameLexicon });
+    useEffect(() => {
+      if (isChallenge && phase === "menu") useGame.setState(freshGame());
+    }, [isChallenge, phase]);
     if (phase === "menu") return /* @__PURE__ */ jsx(MenuScreen, { lexicon: gameLexicon });
     if (phase === "playing") return /* @__PURE__ */ jsx(GameScreen, { lexicon: gameLexicon });
     return /* @__PURE__ */ jsx(SummaryScreen, {});
-  }
-  function ChallengeIntro({ node, lexicon }) {
-    const title = node ? String(node.data.title) : "???";
-    return /* @__PURE__ */ jsx(ui.Page, { children: /* @__PURE__ */ jsx(ui.Stage, { children: /* @__PURE__ */ jsx(
-      ui.StageLayout,
-      {
-        top: /* @__PURE__ */ jsxs(ui.Stack, { gap: "md", children: [
-          /* @__PURE__ */ jsx(ui.StepHeading, { title, subtitle: `Traf ${WIN_THRESHOLD}x by odblokować` }),
-          /* @__PURE__ */ jsxs(ui.Stats, { children: [
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Terminy", value: lexicon.length }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Życia", value: START_HP }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Czas", value: `${ROUND_TIME}s` })
-          ] })
-        ] }),
-        bottom: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-          /* @__PURE__ */ jsx(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: "DO BOJU!" }),
-          /* @__PURE__ */ jsxs(ui.Button, { size: "lg", outline: true, block: true, onClick: backToTree, children: [
-            /* @__PURE__ */ jsx(ArrowLeft, { size: 14 }),
-            " Wróć"
-          ] })
-        ] })
-      }
-    ) }) });
   }
   function MenuScreen({ lexicon }) {
     const { mode } = useGame();
@@ -129,9 +104,9 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
             ], active: mode, onChange: (id) => useGame.setState({ mode: id }) })
           ] }) }),
           /* @__PURE__ */ jsxs(ui.Stats, { children: [
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Terminy", value: lexicon.length }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Czas", value: `${ROUND_TIME}s` }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Życia", value: START_HP })
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Terminy", value: lexicon.length }),
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Czas", value: `${ROUND_TIME}s` }),
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Życia", value: START_HP })
           ] })
         ] }),
         bottom: /* @__PURE__ */ jsx(ui.Button, { size: "lg", color: "primary", block: true, onClick: () => useGame.setState(freshGame()), children: "Start!" })
@@ -159,7 +134,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       clearInterval(timerRef.current);
       const state = useGame.getState();
       if (isChallenge && state.correct >= WIN_THRESHOLD && (bq == null ? void 0 : bq.postId)) {
-        (_a = helpers()) == null ? void 0 : _a.unlockNode(bq.postId);
+        (_a = H()) == null ? void 0 : _a.unlockNode(bq.postId);
         sdk.log(`Węzeł odblokowany! (${state.correct} trafień)`, "ok");
       }
       useGame.setState({ phase: "summary", ...reason === "time" ? { timeLeft: 0 } : { hp: 0 } });
@@ -219,7 +194,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
           maxCombo: Math.max(s.maxCombo, newCombo),
           correct: s.correct + 1
         }));
-        (_a = helpers()) == null ? void 0 : _a.discover(hole.termId);
+        (_a = H()) == null ? void 0 : _a.discover(hole.termId);
         setTimeout(() => {
           if (gameActive.current) nextQuestion();
         }, 600);
@@ -265,7 +240,7 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
       alignItems: "center",
       justifyContent: "center",
       cursor: (hole == null ? void 0 : hole.visible) && !hole.hit && !hole.wrong ? "pointer" : "default",
-      border: `3px solid ${!(hole == null ? void 0 : hole.visible) ? colors.holeRim : hole.hit ? "#16a34a" : hole.wrong ? "#dc2626" : "#2563eb"}`,
+      border: `3px solid ${!(hole == null ? void 0 : hole.visible) ? colors.holeRim : hole.hit ? "var(--color-success)" : hole.wrong ? "var(--color-error)" : "var(--color-primary)"}`,
       transition: "all 0.15s ease",
       transform: shakeHole === i ? "translateX(4px)" : (hole == null ? void 0 : hole.visible) ? "scale(1.05)" : "scale(0.95)",
       opacity: (hole == null ? void 0 : hole.visible) ? 1 : 0.4,
@@ -293,9 +268,9 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
               timeLeft,
               "s"
             ] }),
-            /* @__PURE__ */ jsx(ui.Row, { gap: "sm", children: Array.from({ length: START_HP }, (_, i) => /* @__PURE__ */ jsx("span", { style: { color: i < hp ? colors.hp : colors.muted }, children: /* @__PURE__ */ jsx(Heart, { size: 16 }) }, i)) })
+            /* @__PURE__ */ jsx(ui.Row, { gap: "sm", children: Array.from({ length: START_HP }, (_, i) => /* @__PURE__ */ jsx(ui.Badge, { color: i < hp ? "error" : "ghost", children: /* @__PURE__ */ jsx(Heart, { size: 12 }) }, i)) })
           ] }),
-          progress !== null && /* @__PURE__ */ jsx("div", { style: { background: "#1e293b", borderRadius: "8px", height: "8px", overflow: "hidden" }, children: /* @__PURE__ */ jsx("div", { style: { width: `${progress * 100}%`, height: "100%", background: progress >= 1 ? "#22c55e" : "#f59e0b", transition: "width 0.3s ease" } }) }),
+          progress !== null && /* @__PURE__ */ jsx(ui.ProgressBar, { value: progress * 100, max: 100, color: progress >= 1 ? "success" : "warning" }),
           /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
             /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
               /* @__PURE__ */ jsxs(ui.Row, { gap: "sm", children: [
@@ -315,9 +290,9 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
             ] }),
             /* @__PURE__ */ jsx(ui.Heading, { title: question ? question.texts[question.level] : "..." })
           ] }) }),
-          /* @__PURE__ */ jsx("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", width: "100%" }, children: Array.from({ length: HOLE_COUNT }, (_, idx) => {
+          /* @__PURE__ */ jsx(ui.Grid, { cols: 3, gap: "sm", children: Array.from({ length: HOLE_COUNT }, (_, idx) => {
             const hole = holes[idx];
-            return /* @__PURE__ */ jsx("div", { style: holeStyle(hole, idx), onClick: () => whack(idx), children: (hole == null ? void 0 : hole.visible) ? /* @__PURE__ */ jsx("span", { style: { color: "#fff", fontSize: "13px", fontWeight: 600, lineHeight: 1.2 }, children: hole.term }) : /* @__PURE__ */ jsx("span", { style: { color: colors.muted, fontSize: "24px" }, children: "?" }) }, idx);
+            return /* @__PURE__ */ jsx("div", { style: holeStyle(hole, idx), onClick: () => whack(idx), children: (hole == null ? void 0 : hole.visible) ? /* @__PURE__ */ jsx(ui.Text, { size: "xs", bold: true, children: hole.term }) : /* @__PURE__ */ jsx(ui.Text, { muted: true, children: "?" }) }, idx);
           }) })
         ] })
       }
@@ -342,10 +317,10 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
             }
           ),
           /* @__PURE__ */ jsxs(ui.Stats, { children: [
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Wynik", value: score }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Trafione", value: correct, color: "success" }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Pudła", value: wrong, color: "error" }),
-            /* @__PURE__ */ jsx(ui.Stat, { label: "Max combo", value: maxCombo })
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Wynik", value: score }),
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Trafione", value: correct, color: "success" }),
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Pudła", value: wrong, color: "error" }),
+            /* @__PURE__ */ jsx(ui.Stat, { title: "Max combo", value: maxCombo })
           ] }),
           /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
             /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
@@ -388,73 +363,29 @@ const plugin = ({ React, ui, store, sdk, icons }) => {
     ) }) });
   }
   function CheatSheet() {
+    var _a, _b;
     const { phase, holeTermIds } = useGame();
-    const bq = useBq();
-    const treeId = (bq == null ? void 0 : bq.treeId) || "";
-    (bq == null ? void 0 : bq.postId) || "";
-    const discoveries = store.usePosts("discovery");
-    const lexicon = store.useChildren(treeId, "lexicon");
-    const discoveredSet = useMemo(
-      () => new Set(discoveries.map((d) => String(d.data.termId))),
-      [discoveries]
-    );
-    const discovered = useMemo(() => {
-      if (!holeTermIds || holeTermIds.length === 0) return [];
-      const holeSet = new Set(holeTermIds);
-      return lexicon.filter((l) => holeSet.has(l.id) && discoveredSet.has(l.id)).map((l) => ({
-        id: l.id,
-        term: String(l.data.term || ""),
-        definition: String(l.data.definition || "")
-      }));
-    }, [lexicon, holeTermIds, discoveredSet]);
     if (phase !== "playing") return null;
-    return /* @__PURE__ */ jsx(ui.Box, { header: /* @__PURE__ */ jsx(ui.Cell, { label: true, children: "Odkryte terminy" }), body: /* @__PURE__ */ jsx(ui.Stack, { gap: "sm", children: discovered.map((t) => /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { gap: "xs", children: [
-      /* @__PURE__ */ jsx(ui.Text, { size: "xs", bold: true, children: t.term }),
-      /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: t.definition })
-    ] }) }, t.id)) }), grow: true });
+    const Shared = (_b = (_a = sdk.shared.getState()) == null ? void 0 : _a.bqHelpers) == null ? void 0 : _b.CheatSheet;
+    if (!Shared) return null;
+    const holeSet = new Set(holeTermIds || []);
+    return /* @__PURE__ */ jsx(
+      Shared,
+      {
+        filter: (id) => holeSet.has(id),
+        onBack: backToTree,
+        backIcon: ArrowLeft
+      }
+    );
   }
-  function Scoreboard() {
-    const { phase, score, combo, correct } = useGame();
-    const bq = useBq();
-    const treeId = (bq == null ? void 0 : bq.treeId) || "";
-    const isChallenge = !!(bq == null ? void 0 : bq.challenge);
-    const node = store.usePost((bq == null ? void 0 : bq.postId) || "");
-    const discoveries = store.usePosts("discovery");
-    const lexicon = store.useChildren(treeId, "lexicon");
-    const discoveredCount = useMemo(() => {
-      const dset = new Set(discoveries.map((d) => String(d.data.termId)));
-      return lexicon.filter((l) => dset.has(l.id)).length;
-    }, [lexicon, discoveries]);
-    return /* @__PURE__ */ jsx(ui.Box, { header: /* @__PURE__ */ jsx(ui.Cell, { label: true, children: "Arena" }), body: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-      isChallenge && node && /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-        /* @__PURE__ */ jsx(ui.Text, { size: "xs", muted: true, children: "Cel" }),
-        /* @__PURE__ */ jsx(ui.Text, { bold: true, children: String(node.data.title) }),
-        phase === "playing" && /* @__PURE__ */ jsxs(ui.Badge, { color: correct >= WIN_THRESHOLD ? "success" : "warning", children: [
-          correct,
-          "/",
-          WIN_THRESHOLD
-        ] })
-      ] }) }),
-      phase === "playing" && /* @__PURE__ */ jsx(ui.Card, { children: /* @__PURE__ */ jsxs(ui.Stack, { children: [
-        /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-          /* @__PURE__ */ jsx(ui.Text, { size: "sm", children: "Wynik" }),
-          /* @__PURE__ */ jsx(ui.Text, { bold: true, children: score })
-        ] }),
-        /* @__PURE__ */ jsxs(ui.Row, { justify: "between", children: [
-          /* @__PURE__ */ jsx(ui.Text, { size: "sm", children: "Combo" }),
-          /* @__PURE__ */ jsxs(ui.Badge, { color: combo > 2 ? "accent" : "neutral", children: [
-            "x",
-            combo
-          ] })
-        ] })
-      ] }) }),
-      /* @__PURE__ */ jsx(ui.Divider, {}),
-      /* @__PURE__ */ jsx(ui.Stats, { children: /* @__PURE__ */ jsx(ui.Stat, { label: "Odkryte terminy", value: `${discoveredCount}/${lexicon.length}` }) })
-    ] }), grow: true });
-  }
+  const SharedProgress = () => {
+    var _a, _b;
+    const P = (_b = (_a = sdk.shared.getState()) == null ? void 0 : _a.bqHelpers) == null ? void 0 : _b.Progress;
+    return P ? /* @__PURE__ */ jsx(P, {}) : null;
+  };
   sdk.registerView("bqa.left", { slot: "left", component: CheatSheet });
   sdk.registerView("bqa.center", { slot: "center", component: Arena });
-  sdk.registerView("bqa.right", { slot: "right", component: Scoreboard });
+  sdk.registerView("bqa.right", { slot: "right", component: SharedProgress });
   return { id: "plugin-brain-quest-arena", label: "BQ Arena", icon: Zap, version: "0.4.0" };
 };
 export {
